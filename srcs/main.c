@@ -14,8 +14,8 @@
 
 int		handle_error(const char *err)
 {
-	ft_printf("\033[31;1m[ PACKER ]\033[0m : %s", err);
-	return (EXIT_FAILURE);
+	printf("\033[31;1m[ PACKER ]\033[0m : %s", err);
+	exit (EXIT_FAILURE);
 }
 
 void	free_file(t_file *file)

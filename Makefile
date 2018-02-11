@@ -4,15 +4,13 @@ SHEL		=	/bin/bash
 CC			=	gcc
 CFLAGS		=	-g -Wall -Wextra -Werror
 
-LIBFT_DIR	=	libft/
 SRCS_DIR	=	srcs/
 SRCS_LIST	=	main.c
 SRCS		=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
 OBJS_DIR	=	objs/
 OBJS_LIST	=	$(patsubst %.c, %.o, $(SRCS_LIST))
 OBJS		=	$(addprefix $(OBJS_DIR), $(OBJS_LIST))
-HEADERS		=	-I libft/includes -I ./includes
-LIBS		=	-L libft -lft
+HEADERS		=	-I ./includes
 
 .PHONY : all clean
 
@@ -20,7 +18,7 @@ all : $(NAME)
 
 $(NAME) : $(OBJS)
 	@echo "\033[37mLinking...\033[0m"
-	@$(CC) $(CFLAGS) $^ $(LIBS) -o $@
+	@$(CC) $(CFLAGS) $^ -o $@
 	@echo "\033[32mBinary \033[1;32m$(NAME)\033[1;0m\033[32m created.\033[0m"
 
 $(OBJS_DIR)%.o : $(SRCS_DIR)%.c

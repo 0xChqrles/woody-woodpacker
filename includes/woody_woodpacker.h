@@ -16,7 +16,7 @@
 # define ERR_USAGE "Invalid usage\n"
 # define ERR_FILE "Invalid file\n"
 
-# include "libft.h"
+# include "stdio.h"
 # include "fcntl.h"
 # include "unistd.h"
 # include "stdlib.h"
