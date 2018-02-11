@@ -14,7 +14,7 @@
 
 int		handle_error(const char *err)
 {
-	printf("\033[31;1m[ PACKER ]\033[0m : %s", err);
+	printf("\033[31;1m[ PACKER ]\033[0m : %s\n", err);
 	exit (EXIT_FAILURE);
 }
 
@@ -24,7 +24,25 @@ void	free_file(t_file *file)
 	free(file);
 }
 
-int		handle_file(t_file **file, char *filename)
+uint8_t	get_arch(t_file *file)
+{
+	uint8_t	arch;
+	char	magic[5];
+
+	if (file->size < 5)
+		return (0);
+	arch = 0;
+	GET_ELFMAGIC(magic);
+	if (!ft_strncmp(file->ptr, magic, 4))
+		arch |= AR_ELF;
+	if (file->ptr[EI_CLASS] == ELFCLASS64)
+		arch |= AR_64;
+	else if (file->ptr[EI_CLASS] == ELFCLASS32)
+		arch |= AR_32;
+	return (arch);
+}
+
+int		init_file(t_file **file, char *filename)
 {
 	t_file		*tmp;
 	int			fd;
@@ -40,7 +58,16 @@ int		handle_file(t_file **file, char *filename)
 	close(fd);
 	tmp->size = buf.st_size;
 	tmp->filename = filename;
+	tmp->arch = get_arch(tmp);
 	return (0);
+}
+
+void	handle_file(t_file *file)
+{
+	if (!(file->arch & AR_ELF))
+		handle_error(ERR_ARCH);
+	else if (!(file->arch & AR_64))
+		handle_error(ERR_ARCH_SIZE);
 }
 
 int		main(int ac, char **av)
@@ -49,7 +76,8 @@ int		main(int ac, char **av)
 
 	if (ac != 2)
 		return (handle_error(ERR_USAGE));
-	if (handle_file(&file, av[1]) < 0)
+	if (init_file(&file, av[1]) < 0)
 		return (handle_error(ERR_FILE));
+	handle_file(file);
 	free_file(file);
 }
