@@ -12,7 +12,7 @@
 
 #include "woody_woodpacker.h"
 
-int		handle_error(const char *err)
+int		exit_error(const char *err)
 {
 	printf("\033[31;1m[ PACKER ]\033[0m : %s\n", err);
 	exit (EXIT_FAILURE);
@@ -24,15 +24,29 @@ void	free_file(t_file *file)
 	free(file);
 }
 
+int		check_size(t_file *file, int64_t size, uint8_t flag)
+{
+	if (flag & F_BEGIN && file->size - size < 0)
+		return (-1);
+	if (flag & F_OFFSET && (file->free_size -= size) < 0)
+		return (-1);
+	return (0);
+}
+
+void	get_elfmagic(char *magic)
+{
+	sprintf(magic, "%c%c%c%c", ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3);
+}
+
 uint8_t	get_arch(t_file *file)
 {
 	uint8_t	arch;
 	char	magic[5];
 
-	if (file->size < 5)
+	if (file->size < EI_NIDENT)
 		return (0);
 	arch = 0;
-	GET_ELFMAGIC(magic);
+	get_elfmagic(magic);
 	if (!ft_strncmp(file->ptr, magic, 4))
 		arch |= AR_ELF;
 	if (file->ptr[EI_CLASS] == ELFCLASS64)
@@ -57,17 +71,30 @@ int		init_file(t_file **file, char *filename)
 		return (-1);
 	close(fd);
 	tmp->size = buf.st_size;
+	tmp->free_size = buf.st_size;
 	tmp->filename = filename;
 	tmp->arch = get_arch(tmp);
 	return (0);
 }
 
+void	handle_elf64(t_file *file)
+{
+	Elf64_Ehdr	*header;
+
+	if (check_size(file, sizeof(Elf64_Ehdr), F_BEGIN) < 0)
+		exit_error(ERR_WELL_FORMED);
+	header = (Elf64_Ehdr*)file->ptr;
+	if (header->e_type != ET_DYN || header->e_type != ET_EXEC)
+		exit_error(ERR_EXEC);
+}
+
 void	handle_file(t_file *file)
 {
 	if (!(file->arch & AR_ELF))
-		handle_error(ERR_ARCH);
+		exit_error(ERR_ARCH);
 	else if (!(file->arch & AR_64))
-		handle_error(ERR_ARCH_SIZE);
+		exit_error(ERR_ARCH_SIZE);
+	handle_elf64(file);
 }
 
 int		main(int ac, char **av)
@@ -75,9 +102,9 @@ int		main(int ac, char **av)
 	t_file	*file;
 
 	if (ac != 2)
-		return (handle_error(ERR_USAGE));
+		return (exit_error(ERR_USAGE));
 	if (init_file(&file, av[1]) < 0)
-		return (handle_error(ERR_FILE));
+		return (exit_error(ERR_FILE));
 	handle_file(file);
 	free_file(file);
 }

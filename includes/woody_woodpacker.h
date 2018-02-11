@@ -22,25 +22,27 @@
 # include <sys/stat.h>
 # include <sys/mman.h>
 
-# define ERR_USAGE		"Invalid usage"
-# define ERR_FILE 		"Invalid file"
-# define ERR_ARCH 		"Not an ELF file"
-# define ERR_ARCH_SIZE 	"Not a 64bit file"
+# define ERR_USAGE			"Invalid usage"
+# define ERR_FILE 			"Invalid file"
+# define ERR_ARCH 			"Not an ELF file"
+# define ERR_ARCH_SIZE 		"Not a 64bit file"
+# define ERR_EXEC 			"Not an executable file"
+# define ERR_WELL_FORMED	"Not well-formed"
+
+# define F_BEGIN	0b01
+# define F_OFFSET	0b10
 
 # define AR_ELF		0b00000001
 # define AR_64		0b00000010
 # define AR_32		0b00000100
 
-# define GET_ELFMAGIC(magic) ({\
-	sprintf(magic, "%c%c%c%c", ELFMAG0, ELFMAG1, ELFMAG2, ELFMAG3);\
-})
-
-typedef		struct s_file
+typedef struct	s_file
 {
-	uint8_t	arch;
-	char	*filename;
-	size_t	size;
-	char	*ptr;
-}			t_file;
+	uint8_t		arch;
+	char		*filename;
+	int64_t		size;
+	int64_t		free_size;
+	char		*ptr;
+}				t_file;
 
 #endif
