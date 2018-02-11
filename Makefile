@@ -13,7 +13,7 @@ SRCS		=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
 OBJS_DIR	=	objs/
 OBJS_LIST	=	$(patsubst %.c, %.o, $(SRCS_LIST))
 OBJS		=	$(addprefix $(OBJS_DIR), $(OBJS_LIST))
-HEADERS		=	-I ./includes -I ./libft/includes
+HEADERS		=	-I ./includes -I ./libft/includes -I ./includes/sys
 LIBS		=	-L libft -lft
 
 .PHONY : all clean fclean re

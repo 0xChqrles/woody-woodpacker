@@ -6,7 +6,7 @@
 /*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/02/10 19:39:29 by clanier           #+#    #+#             */
-/*   Updated: 2018/02/10 21:18:59 by clanier          ###   ########.fr       */
+/*   Updated: 2018/02/11 22:49:20 by clanier          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 # define WOODY_WOODPACKER_H
 
 # include "libft.h"
-# include "sys/elf.h"
+# include <elf.h>
 # include <stdio.h>
 # include <fcntl.h>
 # include <unistd.h>
