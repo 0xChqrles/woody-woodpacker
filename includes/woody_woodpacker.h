@@ -43,6 +43,8 @@ typedef struct	s_file
 	int64_t		size;
 	int64_t		free_size;
 	char		*ptr;
+	uint64_t	strtab_ndx;
+	char		*strtab;
 }				t_file;
 
 #endif

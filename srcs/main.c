@@ -77,15 +77,54 @@ int		init_file(t_file **file, char *filename)
 	return (0);
 }
 
+void		dump_section_name(t_file *file, Elf64_Ehdr *e_hdr)
+{
+	Elf64_Shdr	*s_hdr;
+	int	i;
+
+	i = 0;
+	s_hdr = (Elf64_Shdr*)(file->ptr + e_hdr->e_shoff);
+	while (i < e_hdr->e_shnum) {
+		if (check_size(file, e_hdr->e_shoff + sizeof(Elf64_Shdr) * (i + 1), F_BEGIN) < 0)
+			exit_error(ERR_WELL_FORMED);
+		printf("%s\n", (char*)((size_t)file->ptr + file->strtab_ndx + s_hdr->sh_name));
+		s_hdr = (Elf64_Shdr*)((size_t)s_hdr + sizeof(Elf64_Shdr));
+		i++;
+	}
+}
+
+uint64_t	get_strtab_ndx(t_file *file, Elf64_Ehdr *e_hdr)
+{
+	Elf64_Shdr	*s_hdr;
+	int			i;
+
+	i = 0;
+	s_hdr = (Elf64_Shdr*)(file->ptr + e_hdr->e_shoff);
+	while (i < e_hdr->e_shnum)
+	{
+		if (check_size(file, e_hdr->e_shoff + sizeof(Elf64_Shdr) * (i + 1), F_BEGIN) < 0)
+			return (0);
+		if (i == e_hdr->e_shstrndx)
+			return (s_hdr->sh_offset);
+		s_hdr = (Elf64_Shdr*)((size_t)s_hdr + sizeof(Elf64_Shdr));
+		i++;
+	}
+	return (0);
+}
+
 void	handle_elf64(t_file *file)
 {
-	Elf64_Ehdr	*header;
+	Elf64_Ehdr	*e_hdr;
 
 	if (check_size(file, sizeof(Elf64_Ehdr), F_BEGIN) < 0)
 		exit_error(ERR_WELL_FORMED);
-	header = (Elf64_Ehdr*)file->ptr;
-	if (header->e_type != ET_DYN || header->e_type != ET_EXEC)
+	e_hdr = (Elf64_Ehdr*)file->ptr;
+	if ((e_hdr->e_type != ET_DYN && e_hdr->e_type != ET_EXEC) || !e_hdr->e_entry)
 		exit_error(ERR_EXEC);
+	if (!(file->strtab_ndx = get_strtab_ndx(file, e_hdr)))
+		exit_error(ERR_WELL_FORMED);
+	file->strtab = file->ptr + file->strtab_ndx;
+	dump_section_name(file, e_hdr);
 }
 
 void	handle_file(t_file *file)
