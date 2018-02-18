@@ -28,6 +28,7 @@
 # define ERR_ARCH_SIZE 		"Not a 64bit file"
 # define ERR_EXEC 			"Not an executable file"
 # define ERR_WELL_FORMED	"Not well-formed"
+# define ERR_UNKNOW			"An error has occurred"
 
 # define F_BEGIN	0b01
 # define F_OFFSET	0b10
@@ -43,8 +44,17 @@ typedef struct	s_file
 	int64_t		size;
 	int64_t		free_size;
 	char		*ptr;
-	uint64_t	strtab_ndx;
-	char		*strtab;
 }				t_file;
+
+typedef struct	s_elf64
+{
+	char		*ptr;
+	size_t		size;
+	Elf64_Ehdr	*e_hdr;
+	Elf64_Phdr	*p_hdr;
+	Elf64_Shdr	*s_hdr;
+	char		*strtab;
+	uint64_t	strtab_ndx;
+}				t_elf64;
 
 #endif
