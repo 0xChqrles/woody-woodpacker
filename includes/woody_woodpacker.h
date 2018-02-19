@@ -22,7 +22,11 @@
 # include <sys/stat.h>
 # include <sys/mman.h>
 
+# define OPT_F_V	'v'
+# define OPT_V		0b00000001
+
 # define ERR_USAGE			"Invalid usage"
+# define ERR_OPTION			"Invalid option"
 # define ERR_FILE 			"Invalid file"
 # define ERR_ARCH 			"Not an ELF file"
 # define ERR_ARCH_SIZE 		"Not a 64bit file"
@@ -36,6 +40,11 @@
 # define AR_ELF		0b00000001
 # define AR_64		0b00000010
 # define AR_32		0b00000100
+
+# define NEW_SECT_NAME		".woody"
+# define NEW_SECT_NAME_LEN	ft_strlen(NEW_SECT_NAME) + 1
+
+# define NEW_LEN			NEW_SECT_NAME_LEN
 
 typedef struct	s_file
 {
@@ -54,7 +63,7 @@ typedef struct	s_elf64
 	Elf64_Phdr	*p_hdr;
 	Elf64_Shdr	*s_hdr;
 	char		*strtab;
-	uint64_t	strtab_ndx;
+	uint16_t	opts;
 }				t_elf64;
 
 #endif

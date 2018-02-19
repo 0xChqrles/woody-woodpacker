@@ -86,12 +86,11 @@ Elf64_Phdr	*get_inject_pt_load(t_elf64 *elf)
 	i = 0;
 	pt_load = NULL;
 	tmp = elf->p_hdr;
-	while (i < elf->e_hdr->e_phnum)
+	while (i++ < elf->e_hdr->e_phnum)
 	{
 		if (tmp->p_type == PT_LOAD)
 			pt_load = tmp;
-		tmp = (Elf64_Phdr*)((size_t)tmp + sizeof(Elf64_Phdr));
-		i++;
+		tmp++;
 	}
 	return (pt_load);
 }
@@ -105,12 +104,11 @@ Elf64_Shdr	*get_inject_sect(t_elf64 *elf, Elf64_Phdr *pt_load)
 	i = 0;
 	sect = NULL;
 	tmp = elf->s_hdr;
-	while (i < elf->e_hdr->e_shnum)
+	while (i++ < elf->e_hdr->e_shnum)
 	{
 		if (tmp->sh_addr + tmp->sh_size >= pt_load->p_vaddr + pt_load->p_memsz)
 			sect = tmp;
-		tmp = (Elf64_Shdr*)((size_t)tmp + sizeof(Elf64_Shdr));
-		i++;
+		tmp++;
 	}
 	return (sect);
 }
@@ -132,10 +130,58 @@ Elf64_Shdr	new_section()
 	return (new);
 }
 
+void		shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
+{
+	Elf64_Shdr	*s_hdr;
+	Elf64_Phdr	*p_hdr;
+	int			i;
+
+	i = 0;
+	if (elf->e_hdr->e_shoff >= off)
+	{
+		elf->e_hdr->e_shoff += size;
+		elf->s_hdr = (Elf64_Shdr*)(elf->ptr + elf->e_hdr->e_shoff);
+	}
+	s_hdr = elf->s_hdr;
+	while (i++ < elf->e_hdr->e_shnum)
+		if ((s_hdr++)->sh_offset >= off)
+			s_hdr->sh_offset += size;
+	i = 0;
+	p_hdr = elf->p_hdr;
+	while (i++ < elf->e_hdr->e_phnum)
+		if ((p_hdr++)->p_offset >= off)
+			p_hdr->p_offset += size;
+}
+
+void	move_elf_data(t_elf64 *elf, uint64_t off, uint64_t size)
+{
+	uint32_t	i;
+
+	i = 0;
+	while (i++ < elf->size - off)
+		elf->ptr[elf->size + size - i] = elf->ptr[elf->size - i];
+	elf->ptr = ft_bzero(elf->ptr + off, size) - off;
+}
+
+uint64_t	add_sect_name(t_elf64 *elf)
+{
+	Elf64_Shdr	*symtab;
+	uint64_t	off;
+
+	symtab = elf->s_hdr + elf->e_hdr->e_shstrndx;
+	off = symtab->sh_offset + symtab->sh_size;
+	move_elf_data(elf, off, NEW_SECT_NAME_LEN);
+	elf->ptr = ft_memcpy(elf->ptr + off, NEW_SECT_NAME, NEW_SECT_NAME_LEN - 1) - off;
+	shift_offset(elf, off, NEW_SECT_NAME_LEN);
+	symtab = elf->s_hdr + elf->e_hdr->e_shstrndx;
+	symtab->sh_size += NEW_SECT_NAME_LEN;
+	return (symtab->sh_size - NEW_SECT_NAME_LEN - 2);
+}
+
 Elf64_Shdr	fill_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *pt_load, Elf64_Shdr *sect)
 {
-	elf->e_hdr->e_shnum++;
-	new.sh_name = sect->sh_name;
+	(void)sect;
+	new.sh_name = add_sect_name(elf);
 	new.sh_addr = pt_load->p_vaddr + pt_load->p_memsz;
 	new.sh_offset = pt_load->p_offset + pt_load->p_filesz - 10;
 	new.sh_size = 10;
@@ -161,6 +207,7 @@ void	create_woody(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *pt_load)
 
 	i = 0;
 	fd = open("woody", O_CREAT | O_RDWR | O_TRUNC, 0777);
+	elf->e_hdr->e_shnum++;
 	write(fd, (char*)elf->e_hdr, sizeof(Elf64_Ehdr));
 	p_hdr = elf->p_hdr;
 	while (i++ < elf->e_hdr->e_phnum)
@@ -171,12 +218,13 @@ void	create_woody(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *pt_load)
 	s_hdr = elf->s_hdr;
 	i = 0;
 	write_sections(elf, fd);
-	while (i++ < elf->e_hdr->e_shnum)
+	while (++i < elf->e_hdr->e_shnum)
 	{
 		write(fd, (char*)s_hdr, sizeof(Elf64_Shdr));
 		s_hdr++;
 	}
 	(void)pt_load;
+	(void)new;
 	write(fd, (char*)(&new), sizeof(Elf64_Shdr));
 }
 
@@ -193,23 +241,6 @@ void		prepare_injection(t_elf64 *elf)
 	create_woody(elf, new, pt_load);
 }
 
-uint64_t	get_strtab_ndx(t_elf64 *elf)
-{
-	Elf64_Shdr	*s_hdr;
-	int			i;
-
-	i = 0;
-	s_hdr = elf->s_hdr;
-	while (i < elf->e_hdr->e_shnum)
-	{
-		if (i == elf->e_hdr->e_shstrndx)
-			return (s_hdr->sh_offset);
-		s_hdr = (Elf64_Shdr*)((size_t)s_hdr + sizeof(Elf64_Shdr));
-		i++;
-	}
-	return (0);
-}
-
 void	print_strtab(t_elf64 *elf)
 {
 	Elf64_Shdr	*s_hdr;
@@ -219,29 +250,32 @@ void	print_strtab(t_elf64 *elf)
 	s_hdr = elf->s_hdr;
 	while (i++ < elf->e_hdr->e_shnum)
 	{
-		printf("%s\n", &elf->strtab[s_hdr->sh_name]);
+		printf("%03d : %s\n", s_hdr->sh_name, &elf->strtab[s_hdr->sh_name]);
 		s_hdr++;
 	}
+//	s_hdr--;
+//	write(1, (char*)s_hdr, sizeof(Elf64_Shdr));
 }
 
 void	handle_elf64(t_elf64 *elf)
 {
 	if ((elf->e_hdr->e_type != ET_DYN && elf->e_hdr->e_type != ET_EXEC) || !elf->e_hdr->e_entry)
 		exit_error(ERR_EXEC);
-	if (!(elf->strtab_ndx = get_strtab_ndx(elf)))
-		exit_error(ERR_WELL_FORMED);
-	elf->strtab = elf->ptr + elf->strtab_ndx;
-	prepare_injection(elf);
-	print_strtab(elf);
+	elf->strtab = elf->ptr + (elf->s_hdr + elf->e_hdr->e_shstrndx)->sh_offset;
+	if (elf->opts & OPT_V) {
+		print_strtab(elf);
+	} else
+		prepare_injection(elf);
 }
 
-t_elf64	*create_elf64(t_file *file)
+t_elf64	*create_elf64(t_file *file, uint16_t opts)
 {
 	t_elf64	*elf;
 
-	if (!(elf = malloc(sizeof(t_elf64))) || !(elf->ptr = malloc(file->size)))
+	if (!(elf = malloc(sizeof(t_elf64))) || !(elf->ptr = malloc(file->size + NEW_LEN)))
 		exit_error(ERR_UNKNOW);
-	elf->ptr = memcpy(elf->ptr, file->ptr, file->size);
+	elf->ptr = ft_memcpy(elf->ptr, file->ptr, file->size);
+	elf->ptr = ft_bzero(elf->ptr + file->size, NEW_LEN) - file->size;
 	elf->e_hdr = (Elf64_Ehdr*)elf->ptr;
 	elf->p_hdr = (Elf64_Phdr*)(elf->ptr + elf->e_hdr->e_phoff);
 	elf->s_hdr = (Elf64_Shdr*)(elf->ptr + elf->e_hdr->e_shoff);
@@ -249,10 +283,11 @@ t_elf64	*create_elf64(t_file *file)
 	|| check_size(file, elf->e_hdr->e_shoff + sizeof(Elf64_Shdr) * elf->e_hdr->e_shnum, F_BEGIN) < 0)
 		exit_error(ERR_WELL_FORMED);
 	elf->size = file->size;
+	elf->opts = opts;
 	return (elf);
 }
 
-void	handle_file(t_file *file)
+void	handle_file(t_file *file, uint16_t opts)
 {
 	t_elf64	*elf;
 
@@ -260,18 +295,50 @@ void	handle_file(t_file *file)
 		exit_error(ERR_ARCH);
 	else if (!(file->arch & AR_64))
 		exit_error(ERR_ARCH_SIZE);
-	elf = create_elf64(file);
+	elf = create_elf64(file, opts);
 	free_file(file);
 	handle_elf64(elf);
+	free(elf);
+}
+
+int	get_options(int ac, char **av, uint16_t *opts)
+{
+	int	i;
+	int	j;
+
+	i = 0;
+	while (++i < ac && !(j = 0))
+	{
+		while (av[i][0] == '-' && av[i][++j])
+		{
+			if (av[i][j] == OPT_F_V)
+				*opts |= OPT_V;
+			else
+				return (-1);
+		}
+		if (!j)
+			*opts = (((*opts >> 8) + 1) << 8 | (*opts & 0xff));
+	}
+	return (0);
 }
 
 int		main(int ac, char **av)
 {
-	t_file	*file;
+	uint16_t	opts;
+	t_file		*file;
+	int			i;
+	int			j;
 
-	if (ac != 2)
-		return (exit_error(ERR_USAGE));
-	if (init_file(&file, av[1]) < 0)
-		return (exit_error(ERR_FILE));
-	handle_file(file);
+	i = 0;
+	if ((j = get_options(ac, av, &opts)) < 0)
+		return (exit_error(ERR_OPTION));
+	while (j < (opts >> 8))
+	{
+		if (av[++i][0] == '-')
+			continue ;
+		if (init_file(&file, av[i]) < 0)
+			return (exit_error(ERR_FILE));
+		handle_file(file, opts);
+		j++;
+	}
 }
