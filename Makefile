@@ -25,7 +25,7 @@ $(NAME) : $(LIBFT) $(OBJS)
 	@$(CC) $(CFLAGS) $^ $(LIBS) -o $@
 	@echo "\033[32mBinary \033[1;32m$(NAME)\033[1;0m\033[32m created.\033[0m"
 
-$(OBJS_DIR)%.o : $(SRCS_DIR)%.c
+$(OBJS_DIR)%.o : $(SRCS_DIR)%.c includes/*.h
 	@mkdir -p $(OBJS_DIR)
 	@$(CC) $(CFLAGS) $(HEADERS) -c $< -o $@
 	@echo "\033[34mCompilation of \033[36m$(notdir $<)\033[34m done.\033[0m"

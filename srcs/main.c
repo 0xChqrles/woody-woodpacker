@@ -12,6 +12,16 @@
 
 #include "woody_woodpacker.h"
 
+int		datalen(char *s)
+{
+	char	*s2;
+
+	s2 = s;
+	while (*s2 != '\x1b')
+		s2++;
+	return (s2 - s);
+}
+
 int		exit_error(const char *err)
 {
 	printf("\033[31;1m[ PACKER ]\033[0m : %s\n", err);
@@ -22,15 +32,6 @@ void	free_file(t_file *file)
 {
 	munmap(file->ptr, file->size);
 	free(file);
-}
-
-int		check_size(t_file *file, int64_t size, uint8_t flag)
-{
-	if (flag & F_BEGIN && file->size - size < 0)
-		return (-1);
-	if (flag & F_OFFSET && (file->free_size -= size) < 0)
-		return (-1);
-	return (0);
 }
 
 void	get_elfmagic(char *magic)
@@ -77,42 +78,6 @@ int		init_file(t_file **file, char *filename)
 	return (0);
 }
 
-Elf64_Phdr	*get_inject_pt_load(t_elf64 *elf)
-{
-	Elf64_Phdr	*tmp;
-	Elf64_Phdr	*pt_load;
-	int	i;
-
-	i = 0;
-	pt_load = NULL;
-	tmp = elf->p_hdr;
-	while (i++ < elf->e_hdr->e_phnum)
-	{
-		if (tmp->p_type == PT_LOAD)
-			pt_load = tmp;
-		tmp++;
-	}
-	return (pt_load);
-}
-
-Elf64_Shdr	*get_inject_sect(t_elf64 *elf, Elf64_Phdr *pt_load)
-{
-	Elf64_Shdr	*tmp;
-	Elf64_Shdr	*sect;
-	int	i;
-
-	i = 0;
-	sect = NULL;
-	tmp = elf->s_hdr;
-	while (i++ < elf->e_hdr->e_shnum)
-	{
-		if (tmp->sh_addr + tmp->sh_size >= pt_load->p_vaddr + pt_load->p_memsz)
-			sect = tmp;
-		tmp++;
-	}
-	return (sect);
-}
-
 Elf64_Shdr	new_section()
 {
 	Elf64_Shdr	new;
@@ -130,6 +95,47 @@ Elf64_Shdr	new_section()
 	return (new);
 }
 
+Elf64_Shdr	*get_last_exec_load_sect(Elf64_Shdr *s_hdr, int shnum, Elf64_Phdr *exec_load)
+{
+	Elf64_Shdr	*sect;
+	Elf64_Shdr	*tmp;
+	int			i;
+
+	i = 0;
+	sect = NULL;
+	tmp = s_hdr;
+	while (i++ < shnum)
+	{
+		if (tmp->sh_addr + tmp->sh_size >= exec_load->p_memsz + exec_load->p_vaddr)
+			sect = tmp;
+		tmp++;
+	}
+	return (sect);
+}
+
+Elf64_Phdr	*get_last_exec_load(Elf64_Phdr *p_hdr, int phnum)
+{
+	Elf64_Phdr	*exec_load;
+	Elf64_Phdr	*tmp;
+	int			i;
+
+	i = 0;
+	exec_load = NULL;
+	tmp = p_hdr;
+	while (i++ < phnum)
+	{
+		if (tmp->p_type == PT_LOAD)
+			exec_load = tmp;
+		tmp++;
+	}
+	return (exec_load);
+}
+
+void		*get_strtab(t_elf64 *elf)
+{
+	return (elf->strtab = elf->ptr + (elf->s_hdr + elf->e_hdr->e_shstrndx)->sh_offset);
+}
+
 void		shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
 {
 	Elf64_Shdr	*s_hdr;
@@ -142,25 +148,32 @@ void		shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
 		elf->e_hdr->e_shoff += size;
 		elf->s_hdr = (Elf64_Shdr*)(elf->ptr + elf->e_hdr->e_shoff);
 	}
+	if ((uint64_t)((char*)(elf->s_hdr +	elf->e_hdr->e_shstrndx) - elf->ptr) >= off
+	&& (uint64_t)((char*)(elf->s_hdr) - elf->ptr) <= off)
+		elf->e_hdr->e_shstrndx += size / sizeof(Elf64_Shdr);
 	s_hdr = elf->s_hdr;
 	while (i++ < elf->e_hdr->e_shnum)
 		if ((s_hdr++)->sh_offset >= off)
-			s_hdr->sh_offset += size;
+			(s_hdr - 1)->sh_offset += size;
 	i = 0;
 	p_hdr = elf->p_hdr;
 	while (i++ < elf->e_hdr->e_phnum)
 		if ((p_hdr++)->p_offset >= off)
-			p_hdr->p_offset += size;
+			(p_hdr - 1)->p_offset += size;
+	elf->strtab = get_strtab(elf);
 }
 
-void	move_elf_data(t_elf64 *elf, uint64_t off, uint64_t size)
+void	expand_elf_data(t_elf64 *elf, uint64_t off, uint64_t size)
 {
 	uint32_t	i;
 
 	i = 0;
+	if ((elf->free_size -= size) < 0 || off > elf->size)
+		exit_error(ERR_UNKNOW);
 	while (i++ < elf->size - off)
 		elf->ptr[elf->size + size - i] = elf->ptr[elf->size - i];
 	elf->ptr = ft_bzero(elf->ptr + off, size) - off;
+	elf->size += size;
 }
 
 uint64_t	add_sect_name(t_elf64 *elf)
@@ -170,119 +183,138 @@ uint64_t	add_sect_name(t_elf64 *elf)
 
 	symtab = elf->s_hdr + elf->e_hdr->e_shstrndx;
 	off = symtab->sh_offset + symtab->sh_size;
-	move_elf_data(elf, off, NEW_SECT_NAME_LEN);
-	elf->ptr = ft_memcpy(elf->ptr + off, NEW_SECT_NAME, NEW_SECT_NAME_LEN - 1) - off;
-	shift_offset(elf, off, NEW_SECT_NAME_LEN);
+	expand_elf_data(elf, off, S_NAME_LEN);
+	elf->ptr = ft_memcpy(elf->ptr + off, S_NAME, S_NAME_LEN - 1) - off;
+	shift_offset(elf, off, S_NAME_LEN);
 	symtab = elf->s_hdr + elf->e_hdr->e_shstrndx;
-	symtab->sh_size += NEW_SECT_NAME_LEN;
-	return (symtab->sh_size - NEW_SECT_NAME_LEN - 2);
+	symtab->sh_size += S_NAME_LEN;
+	return (symtab->sh_size - S_NAME_LEN - 2);
 }
 
-Elf64_Shdr	fill_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *pt_load, Elf64_Shdr *sect)
+void		prepare_s_data(char *s_data, uint32_t old, uint32_t new)
 {
-	(void)sect;
+	uint32_t	jmp;
+	uint32_t	i;
+
+	i = 0;
+	while (i < (uint32_t)(S_DATA_LEN + 4))
+	{
+		if (!ft_strncmp(S_DATA + i, "%c%c%c%c", 8))
+		{
+			jmp = old - new - i - 4;
+			ft_memcpy(s_data, (char*)(&jmp), 4);
+			s_data += 4;
+			i += 8;
+		}
+		else
+		{
+			*(s_data++) = S_DATA[i];
+			i++;
+		}
+	}
+}
+
+uint64_t	add_sect_content(t_elf64 *elf, Elf64_Phdr *exec_load, Elf64_Shdr *sect)
+{
+	uint64_t	off;
+	char		s_data[S_DATA_LEN];
+	uint32_t	align;
+
+	align = exec_load->p_memsz - exec_load->p_filesz;
+	off = sect->sh_offset;
+	prepare_s_data(s_data, elf->e_hdr->e_entry, sect->sh_addr + sect->sh_size);
+	expand_elf_data(elf, off, align);
+	expand_elf_data(elf, off + align, S_DATA_LEN);
+	elf->ptr = ft_memcpy(elf->ptr + off + align, s_data, S_DATA_LEN) - off - align;
+	shift_offset(elf, off, S_DATA_LEN + align);
+	return (off);
+}
+
+Elf64_Shdr	fill_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load)
+{
+	Elf64_Shdr	*sect;
+	uint64_t	addr;
+
+	if (!(sect = get_last_exec_load_sect(elf->s_hdr, elf->e_hdr->e_shnum, exec_load)))
+		exit_error(ERR_UNKNOW);
+	addr = sect->sh_addr + sect->sh_size;
+	new.sh_offset = add_sect_content(elf, exec_load, sect);
 	new.sh_name = add_sect_name(elf);
-	new.sh_addr = pt_load->p_vaddr + pt_load->p_memsz;
-	new.sh_offset = pt_load->p_offset + pt_load->p_filesz - 10;
-	new.sh_size = 10;
+	new.sh_size = S_DATA_LEN;
+	new.sh_addr = addr;
+	elf->e_hdr->e_entry = addr;
 	return (new);
 }
 
-void	write_sections(t_elf64 *elf, int fd)
+int			inject_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load)
 {
-//	Elf64_Shdr	*s_hdr;
-	size_t		off;
+	Elf64_Shdr	*sect;
+	uint64_t	off;
 
-//	s_hdr = elf->s_hdr;
-	off = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr) * elf->e_hdr->e_phnum;
-	write(fd, elf->ptr + off, elf->e_hdr->e_shoff - off);
-}
-
-void	create_woody(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *pt_load)
-{
-	Elf64_Phdr	*p_hdr;
-	Elf64_Shdr	*s_hdr;
-	int			i;
-	int			fd;
-
-	i = 0;
-	fd = open("woody", O_CREAT | O_RDWR | O_TRUNC, 0777);
+	if (!(sect = get_last_exec_load_sect(elf->s_hdr, elf->e_hdr->e_shnum, exec_load)))
+		return (-1);
+	off = (char*)(sect + 1) - elf->ptr;
+	expand_elf_data(elf, off, sizeof(Elf64_Shdr));
+	elf->ptr = ft_memcpy(elf->ptr + off, (char*)(&new), sizeof(Elf64_Shdr)) - off;
+	shift_offset(elf, off, sizeof(Elf64_Shdr));
+	exec_load->p_memsz += new.sh_size;
+	exec_load->p_filesz = exec_load->p_memsz;
+	exec_load->p_flags = (PF_X | PF_W | PF_R);
 	elf->e_hdr->e_shnum++;
-	write(fd, (char*)elf->e_hdr, sizeof(Elf64_Ehdr));
-	p_hdr = elf->p_hdr;
-	while (i++ < elf->e_hdr->e_phnum)
-	{
-		write(fd, (char*)p_hdr, sizeof(Elf64_Phdr));
-		p_hdr++;
-	}
-	s_hdr = elf->s_hdr;
-	i = 0;
-	write_sections(elf, fd);
-	while (++i < elf->e_hdr->e_shnum)
-	{
-		write(fd, (char*)s_hdr, sizeof(Elf64_Shdr));
-		s_hdr++;
-	}
-	(void)pt_load;
-	(void)new;
-	write(fd, (char*)(&new), sizeof(Elf64_Shdr));
+	return (0);
 }
 
 void		prepare_injection(t_elf64 *elf)
 {
-	Elf64_Phdr	*pt_load;
-	Elf64_Shdr	*sect;
+	Elf64_Phdr	*exec_load;
 	Elf64_Shdr	new;
 
-	if (!(pt_load = get_inject_pt_load(elf)) || !(sect = get_inject_sect(elf, pt_load)))
-		exit_error(ERR_WELL_FORMED);
+	if (!(exec_load = get_last_exec_load(elf->p_hdr, elf->e_hdr->e_phnum)))
+		exit_error(ERR_EXEC);
 	new = new_section();
-	new = fill_section(elf, new, pt_load, sect);
-	create_woody(elf, new, pt_load);
-}
-
-void	print_strtab(t_elf64 *elf)
-{
-	Elf64_Shdr	*s_hdr;
-	int			i;
-
-	i = 0;
-	s_hdr = elf->s_hdr;
-	while (i++ < elf->e_hdr->e_shnum)
-	{
-		printf("%03d : %s\n", s_hdr->sh_name, &elf->strtab[s_hdr->sh_name]);
-		s_hdr++;
-	}
-//	s_hdr--;
-//	write(1, (char*)s_hdr, sizeof(Elf64_Shdr));
+	new = fill_section(elf, new, exec_load);
+	if (inject_section(elf, new, exec_load) < 0)
+		exit_error(ERR_UNKNOW);
 }
 
 void	handle_elf64(t_elf64 *elf)
 {
-	if ((elf->e_hdr->e_type != ET_DYN && elf->e_hdr->e_type != ET_EXEC) || !elf->e_hdr->e_entry)
+	int			fd;
+
+	if ((elf->e_hdr->e_type != ET_DYN && elf->e_hdr->e_type != ET_EXEC)
+	|| !elf->e_hdr->e_entry)
 		exit_error(ERR_EXEC);
-	elf->strtab = elf->ptr + (elf->s_hdr + elf->e_hdr->e_shstrndx)->sh_offset;
-	if (elf->opts & OPT_V) {
-		print_strtab(elf);
-	} else
-		prepare_injection(elf);
+	prepare_injection(elf);
+	fd = open("woody", O_CREAT | O_RDWR | O_TRUNC, 0777);
+	write(fd, (char*)elf->ptr, elf->size);
+	close(fd);
 }
 
 t_elf64	*create_elf64(t_file *file, uint16_t opts)
 {
-	t_elf64	*elf;
+	t_elf64		*elf;
+	Elf64_Ehdr	*e_hdr;
+	Elf64_Phdr	*exec_load;
+	uint32_t	align;
 
-	if (!(elf = malloc(sizeof(t_elf64))) || !(elf->ptr = malloc(file->size + NEW_LEN)))
+	e_hdr = (Elf64_Ehdr*)file->ptr;
+	if (file->size < e_hdr->e_phoff + sizeof(Elf64_Phdr) * e_hdr->e_phnum
+	|| file->size < e_hdr->e_shoff + sizeof(Elf64_Shdr) * e_hdr->e_shnum)
+		exit_error(ERR_WELL_FORMED);
+	if (!(exec_load = get_last_exec_load((void*)file->ptr + e_hdr->e_phoff, e_hdr->e_phnum)))
+		exit_error(ERR_EXEC);
+	align = exec_load->p_memsz - exec_load->p_filesz;
+	if (!(elf = malloc(sizeof(t_elf64)))
+	|| !(elf->ptr = malloc(file->size + NEW_LEN + align)))
 		exit_error(ERR_UNKNOW);
 	elf->ptr = ft_memcpy(elf->ptr, file->ptr, file->size);
 	elf->ptr = ft_bzero(elf->ptr + file->size, NEW_LEN) - file->size;
 	elf->e_hdr = (Elf64_Ehdr*)elf->ptr;
 	elf->p_hdr = (Elf64_Phdr*)(elf->ptr + elf->e_hdr->e_phoff);
 	elf->s_hdr = (Elf64_Shdr*)(elf->ptr + elf->e_hdr->e_shoff);
-	if (check_size(file, elf->e_hdr->e_phoff + sizeof(Elf64_Phdr) * elf->e_hdr->e_phnum, F_BEGIN) < 0
-	|| check_size(file, elf->e_hdr->e_shoff + sizeof(Elf64_Shdr) * elf->e_hdr->e_shnum, F_BEGIN) < 0)
-		exit_error(ERR_WELL_FORMED);
+	elf->strtab = get_strtab(elf);
 	elf->size = file->size;
+	elf->free_size = NEW_LEN + align;
 	elf->opts = opts;
 	return (elf);
 }
