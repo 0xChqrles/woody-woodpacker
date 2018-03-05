@@ -6,7 +6,7 @@
 /*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/02/10 19:37:04 by clanier           #+#    #+#             */
-/*   Updated: 2018/02/10 21:26:09 by clanier          ###   ########.fr       */
+/*   Updated: 2018/03/05 18:31:18 by clanier          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 int		exit_error(const char *err)
 {
 	printf("\033[31;1m[ PACKER ]\033[0m : %s\n", err);
-	exit (EXIT_FAILURE);
+	exit(EXIT_FAILURE);
 }
 
 void	free_file(t_file *file)
@@ -68,7 +68,7 @@ int		init_file(t_file **file, char *filename)
 	return (0);
 }
 
-Elf64_Shdr	new_section()
+Elf64_Shdr	new_section(void)
 {
 	Elf64_Shdr	new;
 
@@ -85,7 +85,8 @@ Elf64_Shdr	new_section()
 	return (new);
 }
 
-Elf64_Shdr	*get_last_exec_load_sect(Elf64_Shdr *s_hdr, int shnum, Elf64_Phdr *exec_load)
+Elf64_Shdr	*get_last_exec_load_sect(Elf64_Shdr *s_hdr,
+			int shnum, Elf64_Phdr *exec_load)
 {
 	Elf64_Shdr	*sect;
 	Elf64_Shdr	*tmp;
@@ -96,7 +97,8 @@ Elf64_Shdr	*get_last_exec_load_sect(Elf64_Shdr *s_hdr, int shnum, Elf64_Phdr *ex
 	tmp = s_hdr;
 	while (i++ < shnum)
 	{
-		if (tmp->sh_addr + tmp->sh_size >= exec_load->p_memsz + exec_load->p_vaddr)
+		if (tmp->sh_addr + tmp->sh_size
+		>= exec_load->p_memsz + exec_load->p_vaddr)
 			sect = tmp;
 		tmp++;
 	}
@@ -139,7 +141,8 @@ Elf64_Shdr	*get_sect_from_name(t_elf64 *elf, char *name)
 
 void		*get_strtab(t_elf64 *elf)
 {
-	return (elf->strtab = elf->ptr + (elf->s_hdr + elf->e_hdr->e_shstrndx)->sh_offset);
+	return (elf->strtab = elf->ptr
+	+ (elf->s_hdr + elf->e_hdr->e_shstrndx)->sh_offset);
 }
 
 void		shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
@@ -154,7 +157,8 @@ void		shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
 		elf->e_hdr->e_shoff += size;
 		elf->s_hdr = (Elf64_Shdr*)(elf->ptr + elf->e_hdr->e_shoff);
 	}
-	if ((uint64_t)((char*)(elf->s_hdr +	elf->e_hdr->e_shstrndx) - elf->ptr) >= off
+	if ((uint64_t)((char*)(elf->s_hdr
+	+ elf->e_hdr->e_shstrndx) - elf->ptr) >= off
 	&& (uint64_t)((char*)(elf->s_hdr) - elf->ptr) <= off)
 		elf->e_hdr->e_shstrndx += size / sizeof(Elf64_Shdr);
 	s_hdr = elf->s_hdr;
@@ -197,7 +201,8 @@ uint64_t	add_sect_name(t_elf64 *elf)
 	return (symtab->sh_size - S_NAME_LEN - 2);
 }
 
-void		prepare_s_data(char *s_data, Elf64_Shdr *text, uint32_t old, uint32_t new)
+void		prepare_s_data(char *s_data,
+			Elf64_Shdr *text, uint32_t old, uint32_t new)
 {
 	uint32_t	jmp;
 
@@ -210,7 +215,8 @@ void		prepare_s_data(char *s_data, Elf64_Shdr *text, uint32_t old, uint32_t new)
 	ft_memcpy(s_data + loader_sz - 0x8, (char*)(&(text->sh_size)), 4);
 }
 
-uint64_t	add_sect_content(t_elf64 *elf, Elf64_Phdr *exec_load, Elf64_Shdr *sect)
+uint64_t	add_sect_content(t_elf64 *elf,
+			Elf64_Phdr *exec_load, Elf64_Shdr *sect)
 {
 	uint64_t	off;
 	char		*s_data;
@@ -225,7 +231,8 @@ uint64_t	add_sect_content(t_elf64 *elf, Elf64_Phdr *exec_load, Elf64_Shdr *sect)
 	prepare_s_data(s_data, get_sect_from_name(elf, ".text"),
 	elf->e_hdr->e_entry, sect->sh_addr + sect->sh_size);
 	expand_elf_data(elf, off, align + loader_sz);
-	elf->ptr = ft_memcpy(elf->ptr + off + align, s_data, loader_sz) - off - align;
+	elf->ptr = ft_memcpy(elf->ptr + off
+	+ align, s_data, loader_sz) - off - align;
 	shift_offset(elf, off, loader_sz + align);
 	free(s_data);
 	return (off + align);
@@ -236,7 +243,8 @@ Elf64_Shdr	fill_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load)
 	Elf64_Shdr	*sect;
 	uint64_t	addr;
 
-	if (!(sect = get_last_exec_load_sect(elf->s_hdr, elf->e_hdr->e_shnum, exec_load)))
+	if (!(sect = get_last_exec_load_sect(elf->s_hdr,
+	elf->e_hdr->e_shnum, exec_load)))
 		exit_error(ERR_UNKNOW);
 	addr = sect->sh_addr + sect->sh_size;
 	new.sh_offset = add_sect_content(elf, exec_load, sect);
@@ -267,11 +275,13 @@ Elf64_Shdr	*inject_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load)
 	Elf64_Shdr	*sect;
 	uint64_t	off;
 
-	if (!(sect = get_last_exec_load_sect(elf->s_hdr, elf->e_hdr->e_shnum, exec_load)))
+	if (!(sect = get_last_exec_load_sect(elf->s_hdr,
+	elf->e_hdr->e_shnum, exec_load)))
 		return (NULL);
 	off = (char*)(++sect) - elf->ptr;
 	expand_elf_data(elf, off, sizeof(Elf64_Shdr));
-	elf->ptr = ft_memcpy(elf->ptr + off, (char*)(&new), sizeof(Elf64_Shdr)) - off;
+	elf->ptr = ft_memcpy(elf->ptr + off,
+	(char*)(&new), sizeof(Elf64_Shdr)) - off;
 	shift_offset(elf, off, sizeof(Elf64_Shdr));
 	exec_load->p_memsz += new.sh_size;
 	exec_load->p_filesz = exec_load->p_memsz;
@@ -382,10 +392,12 @@ int	get_options(int ac, char **av, uint16_t *opts)
 			else
 				return (-1);
 		}
-		if (!j)
-			*opts = (((*opts >> 8) + 1) << 8 | (*opts & 0xff));
+		if (!j && !(*opts >> 8))
+			*opts = (((*opts >> 8) | i) << 8 | (*opts & 0xff));
+		else if (!j)
+			return (-1);
 	}
-	return (0);
+	return ((*opts >> 8) ? 0 : -1);
 }
 
 int		main(int ac, char **av)
@@ -397,14 +409,8 @@ int		main(int ac, char **av)
 
 	i = 0;
 	if ((j = get_options(ac, av, &opts)) < 0)
-		return (exit_error(ERR_OPTION));
-	while (j < (opts >> 8))
-	{
-		if (av[++i][0] == '-')
-			continue ;
-		if (init_file(&file, av[i]) < 0)
-			return (exit_error(ERR_FILE));
-		handle_file(file, opts);
-		j++;
-	}
+		exit_error(ERR_OPTION);
+	if (init_file(&file, av[(opts >> 8)]) < 0)
+		return (exit_error(ERR_FILE));
+	handle_file(file, opts);
 }
