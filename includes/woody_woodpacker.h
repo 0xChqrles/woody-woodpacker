@@ -6,7 +6,7 @@
 /*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/02/10 19:39:29 by clanier           #+#    #+#             */
-/*   Updated: 2018/02/11 22:49:20 by clanier          ###   ########.fr       */
+/*   Updated: 2018/03/05 20:05:44 by clanier          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@
 # define ERR_ARCH_SIZE 		"Not a 64bit file"
 # define ERR_EXEC 			"Not an executable file"
 # define ERR_WELL_FORMED	"Not well-formed"
-# define ERR_NO_PIE			"This binary is not ET_EXEC, try to recompile with -no-pie flag"
+# define ERR_NO_PIE			"This executable is not ET_EXEC but ET_DYN"
 # define ERR_UNKNOW			"An error has occurred"
 
 # define AR_ELF		0b00000001
@@ -44,7 +44,7 @@
 # define NEW_LEN	S_NAME_LEN + sizeof(Elf64_Shdr);
 
 void			loader(void);
-extern uint32_t	loader_sz;
+extern uint32_t	g_loader_sz;
 
 typedef struct	s_file
 {
@@ -76,7 +76,8 @@ Elf64_Shdr		*get_sect_from_name(t_elf64 *elf, char *name);
 void			*get_strtab(t_elf64 *elf);
 void			cipher_s_text(t_elf64 *elf);
 void			handle_elf64(t_elf64 *elf);
-void			init_elf64(t_file *file, t_elf64 *elf, uint64_t len, uint16_t opts);
+void			init_elf64(t_file *file,
+				t_elf64 *elf, uint64_t len, uint16_t opts);
 t_elf64			*create_elf64(t_file *file, uint16_t opts);
 void			handle_file(t_file *file, uint16_t opts);
 void			free_file(t_file *file);
@@ -88,8 +89,10 @@ void			prepare_s_data(char *s_data,
 				Elf64_Shdr *text, uint32_t old, uint32_t new);
 uint64_t		add_sect_content(t_elf64 *elf,
 				Elf64_Phdr *exec_load, Elf64_Shdr *sect);
-Elf64_Shdr		fill_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load);
-Elf64_Shdr		*inject_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load);
+Elf64_Shdr		fill_section(t_elf64 *elf,
+				Elf64_Shdr new, Elf64_Phdr *exec_load);
+Elf64_Shdr		*inject_section(t_elf64 *elf,
+				Elf64_Shdr new, Elf64_Phdr *exec_load);
 void			exit_error(const char *err);
 int				get_options(int ac, char **av, uint16_t *opts);
 int				main(int ac, char **av);

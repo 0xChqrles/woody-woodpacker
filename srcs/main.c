@@ -6,7 +6,7 @@
 /*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2018/02/10 19:37:04 by clanier           #+#    #+#             */
-/*   Updated: 2018/03/05 18:31:18 by clanier          ###   ########.fr       */
+/*   Updated: 2018/03/05 20:00:41 by clanier          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ void	exit_error(const char *err)
 	exit(EXIT_FAILURE);
 }
 
-int	get_options(int ac, char **av, uint16_t *opts)
+int		get_options(int ac, char **av, uint16_t *opts)
 {
 	int	i;
 	int	j;

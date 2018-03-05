@@ -1,6 +1,18 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   expand_elf.c                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/03/05 19:59:49 by clanier           #+#    #+#             */
+/*   Updated: 2018/03/05 19:59:55 by clanier          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "woody_woodpacker.h"
 
-void		shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
+void	shift_offset(t_elf64 *elf, uint64_t off, uint64_t size)
 {
 	Elf64_Shdr	*s_hdr;
 	Elf64_Phdr	*p_hdr;

@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   handle_elf.c                                       :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/03/05 20:00:48 by clanier           #+#    #+#             */
+/*   Updated: 2018/03/05 20:06:32 by clanier          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "woody_woodpacker.h"
 
 void	cipher_s_text(t_elf64 *elf)
@@ -50,7 +62,7 @@ t_elf64	*create_elf64(t_file *file, uint16_t opts)
 	if (!(exec_load = get_last_exec_load((void*)file->ptr
 	+ e_hdr->e_phoff, e_hdr->e_phnum)))
 		exit_error(ERR_EXEC);
-	len = loader_sz + exec_load->p_memsz - exec_load->p_filesz + NEW_LEN;
+	len = g_loader_sz + exec_load->p_memsz - exec_load->p_filesz + NEW_LEN;
 	if (!(elf = malloc(sizeof(t_elf64)))
 	|| !(elf->ptr = malloc(file->size + len)))
 		exit_error(ERR_UNKNOW);

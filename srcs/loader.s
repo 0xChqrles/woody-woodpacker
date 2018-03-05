@@ -1,8 +1,8 @@
 global loader:function
-global loader_sz:function
+global g_loader_sz:function
 
 section .text
-	loader_sz dd end - loader
+	g_loader_sz dd end - loader
 
 loader:
 	jmp loader_start

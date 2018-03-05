@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   inject_woody.c                                     :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: clanier <marvin@42.fr>                     +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2018/03/05 20:00:59 by clanier           #+#    #+#             */
+/*   Updated: 2018/03/05 20:06:52 by clanier          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "woody_woodpacker.h"
 
 uint64_t	add_sect_name(t_elf64 *elf)
@@ -22,11 +34,11 @@ void		prepare_s_data(char *s_data,
 
 	if (!text)
 		exit_error(ERR_WELL_FORMED);
-	ft_memcpy(s_data, &loader, loader_sz);
-	jmp = old - new - loader_sz + 0x10;
-	ft_memcpy(s_data + loader_sz - 0x14, (char*)(&jmp), 4);
-	ft_memcpy(s_data + loader_sz - 0x10, (char*)(&(text->sh_addr)), 8);
-	ft_memcpy(s_data + loader_sz - 0x8, (char*)(&(text->sh_size)), 4);
+	ft_memcpy(s_data, &loader, g_loader_sz);
+	jmp = old - new - g_loader_sz + 0x10;
+	ft_memcpy(s_data + g_loader_sz - 0x14, (char*)(&jmp), 4);
+	ft_memcpy(s_data + g_loader_sz - 0x10, (char*)(&(text->sh_addr)), 8);
+	ft_memcpy(s_data + g_loader_sz - 0x8, (char*)(&(text->sh_size)), 4);
 }
 
 uint64_t	add_sect_content(t_elf64 *elf,
@@ -36,7 +48,7 @@ uint64_t	add_sect_content(t_elf64 *elf,
 	char		*s_data;
 	uint32_t	align;
 
-	if (!(s_data = malloc(loader_sz)))
+	if (!(s_data = malloc(g_loader_sz)))
 		exit_error(ERR_UNKNOW);
 	align = exec_load->p_memsz - exec_load->p_filesz;
 	off = sect->sh_offset;
@@ -44,10 +56,10 @@ uint64_t	add_sect_content(t_elf64 *elf,
 		off += sect->sh_size;
 	prepare_s_data(s_data, get_sect_from_name(elf, ".text"),
 	elf->e_hdr->e_entry, sect->sh_addr + sect->sh_size);
-	expand_elf_data(elf, off, align + loader_sz);
+	expand_elf_data(elf, off, align + g_loader_sz);
 	elf->ptr = ft_memcpy(elf->ptr + off
-	+ align, s_data, loader_sz) - off - align;
-	shift_offset(elf, off, loader_sz + align);
+	+ align, s_data, g_loader_sz) - off - align;
+	shift_offset(elf, off, g_loader_sz + align);
 	free(s_data);
 	return (off + align);
 }
@@ -63,7 +75,7 @@ Elf64_Shdr	fill_section(t_elf64 *elf, Elf64_Shdr new, Elf64_Phdr *exec_load)
 	addr = sect->sh_addr + sect->sh_size;
 	new.sh_offset = add_sect_content(elf, exec_load, sect);
 	new.sh_name = add_sect_name(elf);
-	new.sh_size = loader_sz;
+	new.sh_size = g_loader_sz;
 	new.sh_addr = addr;
 	elf->e_hdr->e_entry = addr;
 	return (new);
