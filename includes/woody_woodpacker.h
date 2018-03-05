@@ -32,6 +32,7 @@
 # define ERR_ARCH_SIZE 		"Not a 64bit file"
 # define ERR_EXEC 			"Not an executable file"
 # define ERR_WELL_FORMED	"Not well-formed"
+# define ERR_NO_PIE			"This binary is not ET_EXEC, try to recompile with -no-pie flag"
 # define ERR_UNKNOW			"An error has occurred"
 
 # define AR_ELF		0b00000001
@@ -41,10 +42,12 @@
 # define S_NAME		".woody"
 # define S_NAME_LEN	ft_strlen(S_NAME) + 1
 
-# define S_DATA		"\x9c\x50\x57\x56\x54\x52\x51\xbf\x01\x00\x00\x00\x48\x8d\x35\x0c\x00\x00\x00\xba\x0e\x00\x00\x00\x48\x89\xf8\x0f\x05\xeb\x0f\x2e\x2e\x2e\x2e\x57\x4f\x4f\x44\x59\x2e\x2e\x2e\x2e\x0a\x00\x59\x5a\x5c\x5e\x5f\x58\x9d\xe9%c%c%c%c\x1b"
-# define S_DATA_LEN	datalen(S_DATA) - 4
+# define NEW_LEN	S_NAME_LEN + sizeof(Elf64_Shdr)
 
-# define NEW_LEN	S_NAME_LEN + S_DATA_LEN + sizeof(Elf64_Shdr)
+void			loader(void);
+extern uint32_t	loader_sz;
+
+void			cpr_algo(void *text, size_t sz);
 
 typedef struct	s_file
 {

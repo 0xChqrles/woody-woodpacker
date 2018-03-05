@@ -1,20 +1,27 @@
-NAME		=	woody_woodpacker
-SHEL		=	/bin/bash
+NAME			=	woody_woodpacker
+SHEL			=	/bin/bash
 
-CC			=	gcc
-CFLAGS		=	-g -Wall -Wextra -Werror
+AC				=	nasm
+CC				=	gcc
+AFLAGS			=	-f elf64
+CFLAGS			=	-g -Wall -Wextra -Werror
 
-LIBFT_DIR	=	libft/
-LIBFT_NAME	=	libft.a
-LIBFT		=	$(addprefix $(LIBFT_DIR), $(LIBFT_NAME))
-SRCS_DIR	=	srcs/
-SRCS_LIST	=	main.c
-SRCS		=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
-OBJS_DIR	=	objs/
-OBJS_LIST	=	$(patsubst %.c, %.o, $(SRCS_LIST))
-OBJS		=	$(addprefix $(OBJS_DIR), $(OBJS_LIST))
-HEADERS		=	-I ./includes -I ./libft/includes -I ./includes/sys
-LIBS		=	-L libft -lft
+LIBFT_DIR		=	libft/
+LIBFT_NAME		=	libft.a
+LIBFT			=	$(addprefix $(LIBFT_DIR), $(LIBFT_NAME))
+
+SRCS_DIR		=	srcs/
+C_SRCS			=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
+ASM_SRCS		=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
+C_SRCS_LIST		=	main.c
+ASM_SRCS_LIST	=	loader.s cpr_algo.s
+
+OBJS_DIR		=	objs/
+OBJS_LIST		:=	$(patsubst %.c, %.o, $(C_SRCS_LIST)) $(patsubst %.s, %.o, $(ASM_SRCS_LIST))
+OBJS			=	$(addprefix $(OBJS_DIR), $(OBJS_LIST))
+
+HEADERS			=	-I ./includes -I ./libft/includes -I ./includes/sys
+LIBS			=	-L libft -lft
 
 .PHONY : all clean fclean re
 
@@ -28,6 +35,11 @@ $(NAME) : $(LIBFT) $(OBJS)
 $(OBJS_DIR)%.o : $(SRCS_DIR)%.c includes/*.h
 	@mkdir -p $(OBJS_DIR)
 	@$(CC) $(CFLAGS) $(HEADERS) -c $< -o $@
+	@echo "\033[34mCompilation of \033[36m$(notdir $<)\033[34m done.\033[0m"
+
+$(OBJS_DIR)%.o : $(SRCS_DIR)%.s includes/*.h
+	@mkdir -p $(OBJS_DIR)
+	@$(AC) $(AFLAGS) $< -o $@
 	@echo "\033[34mCompilation of \033[36m$(notdir $<)\033[34m done.\033[0m"
 
 $(LIBFT) :
