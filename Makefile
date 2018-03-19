@@ -13,7 +13,7 @@ LIBFT			=	$(addprefix $(LIBFT_DIR), $(LIBFT_NAME))
 SRCS_DIR		=	srcs/
 C_SRCS			=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
 ASM_SRCS		=	$(addprefix $(SRCS_DIR), $(SRCS_LIST))
-C_SRCS_LIST		=	expand_elf.c get_elf.c handle_elf.c \
+C_SRCS_LIST		=	expand_elf.c get_elf.c handle_elf.c key.c \
 					handle_file.c inject_woody.c main.c prepare_woody.c
 ASM_SRCS_LIST	=	loader.s cpr_algo.s
 

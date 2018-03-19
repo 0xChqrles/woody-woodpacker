@@ -27,16 +27,22 @@ uint64_t	add_sect_name(t_elf64 *elf)
 	return (symtab->sh_size - S_NAME_LEN - 2);
 }
 
-void		prepare_s_data(char *s_data,
-			Elf64_Shdr *text, uint32_t old, uint32_t new)
+void		prepare_s_data(t_elf64 *elf, char *s_data,
+			Elf64_Shdr *text, uint32_t new)
 {
 	uint32_t	jmp;
+	uint8_t		key[16];
 
 	if (!text)
 		exit_error(ERR_WELL_FORMED);
+	if (generate_key(key) < 0)
+		exit_error(ERR_UNKNOW);
 	ft_memcpy(s_data, &loader, g_loader_sz);
-	jmp = old - new - g_loader_sz + 0x10;
-	ft_memcpy(s_data + g_loader_sz - 0x14, (char*)(&jmp), 4);
+	jmp = elf->e_hdr->e_entry - new - g_loader_sz + 0x20;
+	cpr_algo(elf->ptr + text->sh_offset, text->sh_size / 4, key);
+	print_key(key);
+	ft_memcpy(s_data + g_loader_sz - 0x24, (char*)(&jmp), 4);
+	ft_memcpy(s_data + g_loader_sz - 0x20, (char*)key, 16);
 	ft_memcpy(s_data + g_loader_sz - 0x10, (char*)(&(text->sh_addr)), 8);
 	ft_memcpy(s_data + g_loader_sz - 0x8, (char*)(&(text->sh_size)), 4);
 }
@@ -54,8 +60,8 @@ uint64_t	add_sect_content(t_elf64 *elf,
 	off = sect->sh_offset;
 	if (sect->sh_type != SHT_NOBITS)
 		off += sect->sh_size;
-	prepare_s_data(s_data, get_sect_from_name(elf, ".text"),
-	elf->e_hdr->e_entry, sect->sh_addr + sect->sh_size);
+	prepare_s_data(elf, s_data, get_sect_from_name(elf, ".text"),
+	sect->sh_addr + sect->sh_size);
 	expand_elf_data(elf, off, align + g_loader_sz);
 	elf->ptr = ft_memcpy(elf->ptr + off
 	+ align, s_data, g_loader_sz) - off - align;

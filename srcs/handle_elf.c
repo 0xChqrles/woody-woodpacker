@@ -12,15 +12,6 @@
 
 #include "woody_woodpacker.h"
 
-void	cipher_s_text(t_elf64 *elf)
-{
-	Elf64_Shdr	*text;
-
-	if (!(text = get_sect_from_name(elf, ".text")))
-		exit_error(ERR_UNKNOW);
-	cpr_algo(elf->ptr + text->sh_offset, text->sh_size);
-}
-
 void	handle_elf64(t_elf64 *elf)
 {
 	int			fd;
@@ -28,7 +19,6 @@ void	handle_elf64(t_elf64 *elf)
 	if (elf->e_hdr->e_type != ET_EXEC || !elf->e_hdr->e_entry)
 		exit_error(elf->e_hdr->e_type == ET_DYN ? ERR_NO_PIE : ERR_EXEC);
 	prepare_injection(elf);
-	cipher_s_text(elf);
 	if ((fd = open("woody", O_CREAT | O_RDWR | O_TRUNC, 0755)) <= 0)
 		exit_error(ERR_UNKNOW);
 	write(fd, (char*)elf->ptr, elf->size);

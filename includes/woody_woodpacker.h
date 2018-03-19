@@ -74,7 +74,6 @@ Elf64_Shdr		*get_last_exec_load_sect(Elf64_Shdr *s_hdr,
 Elf64_Phdr		*get_last_exec_load(Elf64_Phdr *p_hdr, int phnum);
 Elf64_Shdr		*get_sect_from_name(t_elf64 *elf, char *name);
 void			*get_strtab(t_elf64 *elf);
-void			cipher_s_text(t_elf64 *elf);
 void			handle_elf64(t_elf64 *elf);
 void			init_elf64(t_file *file,
 				t_elf64 *elf, uint64_t len, uint16_t opts);
@@ -85,8 +84,8 @@ void			get_elfmagic(char *magic);
 uint8_t			get_arch(t_file *file);
 int				init_file(t_file **file, char *filename);
 uint64_t		add_sect_name(t_elf64 *elf);
-void			prepare_s_data(char *s_data,
-				Elf64_Shdr *text, uint32_t old, uint32_t new);
+void			prepare_s_data(t_elf64 *elf, char *s_data,
+				Elf64_Shdr *text, uint32_t new);
 uint64_t		add_sect_content(t_elf64 *elf,
 				Elf64_Phdr *exec_load, Elf64_Shdr *sect);
 Elf64_Shdr		fill_section(t_elf64 *elf,
@@ -99,6 +98,8 @@ int				main(int ac, char **av);
 Elf64_Shdr		new_section(void);
 void			set_pt_load_flags(Elf64_Phdr *p_hdr, int phnum);
 Elf64_Shdr		*prepare_injection(t_elf64 *elf);
-void			cpr_algo(void *text, size_t sz);
+void			cpr_algo(void *text, size_t sz, uint8_t *key);
+int				generate_key(uint8_t *key);
+void			print_key(uint8_t *key);
 
 #endif
