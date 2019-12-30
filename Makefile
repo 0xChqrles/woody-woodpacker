@@ -1,5 +1,5 @@
 NAME			=	woody_woodpacker
-SHEL			=	/bin/bash
+SHELL			=	/bin/bash
 
 AC				=	nasm
 CC				=	gcc
